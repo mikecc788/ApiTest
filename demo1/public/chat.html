@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时聊天室</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+
+        .chat-container {
+            display: flex;
+            height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .online-users {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .user-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f0f2f5;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .user-item:hover {
+            background: #e4e6eb;
+        }
+
+        .user-item.selected {
+            background: #e7f3ff;
+            color: #1877f2;
+        }
+
+        .main-chat {
+            flex-grow: 1;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 15px;
+            border-bottom: 1px solid #e4e6eb;
+        }
+
+        .messages {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin: 5px 0;
+        }
+
+        .message.received {
+            background: #f0f2f5;
+            align-self: flex-start;
+        }
+
+        .message.sent {
+            background: #0084ff;
+            color: white;
+            align-self: flex-end;
+        }
+
+        .message .user {
+            font-size: 0.8em;
+            margin-bottom: 5px;
+            color: #65676b;
+        }
+
+        .message.sent .user {
+            color: #fff;
+        }
+
+        .message .time {
+            font-size: 0.7em;
+            margin-top: 5px;
+            opacity: 0.7;
+        }
+
+        .input-area {
+            padding: 15px;
+            border-top: 1px solid #e4e6eb;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #e4e6eb;
+            border-radius: 20px;
+            outline: none;
+        }
+
+        .send-button {
+            padding: 10px 20px;
+            background: #0084ff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .send-button:hover {
+            background: #0073e6;
+        }
+
+        .typing-indicator {
+            padding: 5px 15px;
+            color: #65676b;
+            font-style: italic;
+        }
+
+        .join-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .join-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .join-box input {
+            padding: 10px;
+            margin: 10px 0;
+            width: 200px;
+            border: 1px solid #e4e6eb;
+            border-radius: 5px;
+        }
+
+        .join-box button {
+            padding: 10px 20px;
+            background: #0084ff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .system-message {
+            text-align: center;
+            color: #65676b;
+            margin: 10px 0;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <!-- 加入聊天室的弹窗 -->
+    <div class="join-screen" id="joinScreen">
+        <div class="join-box">
+            <h2>加入聊天室</h2>
+            <input type="text" id="usernameInput" placeholder="输入你的昵称">
+            <button onclick="joinChat()">加入</button>
+        </div>
+    </div>
+
+    <!-- 主聊天界面 -->
+    <div class="chat-container">
+        <!-- 侧边栏 - 在线用户列表 -->
+        <div class="sidebar">
+            <h3>在线用户</h3>
+            <div class="online-users" id="onlineUsers">
+                <!-- 在线用户列表将通过JavaScript动态添加 -->
+            </div>
+        </div>
+
+        <!-- 主聊天区域 -->
+        <div class="main-chat">
+            <div class="chat-header">
+                <h2>聊天室</h2>
+            </div>
+            <div class="messages" id="messages">
+                <!-- 消息将通过JavaScript动态添加 -->
+            </div>
+            <div class="typing-indicator" id="typingIndicator"></div>
+            <div class="input-area">
+                <input type="text" class="message-input" id="messageInput" placeholder="输入消息...">
+                <button class="send-button" onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入Socket.IO客户端库 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // 连接Socket.IO服务器
+        const socket = io();
+        let currentUser = null;
+        let selectedUser = null;
+        let typingTimeout = null;
+
+        // 加入聊天室
+        function joinChat() {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (username) {
+                currentUser = username;
+                socket.emit('join', username);
+                document.getElementById('joinScreen').style.display = 'none';
+            }
+        }
+
+        // 发送消息
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (text) {
+                if (selectedUser) {
+                    // 发送私聊消息
+                    socket.emit('privateMessage', {
+                        to: selectedUser.id,
+                        text: text
+                    });
+                } else {
+                    // 发送群聊消息
+                    socket.emit('message', { text: text });
+                }
+                input.value = '';
+            }
+        }
+
+        // 添加消息到聊天区域
+        function addMessage(message, type = 'received') {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const userSpan = document.createElement('div');
+            userSpan.className = 'user';
+            userSpan.textContent = message.user || message.from;
+            
+            const textSpan = document.createElement('div');
+            textSpan.className = 'text';
+            textSpan.textContent = message.text;
+            
+            const timeSpan = document.createElement('div');
+            timeSpan.className = 'time';
+            timeSpan.textContent = new Date(message.time).toLocaleTimeString();
+            
+            messageDiv.appendChild(userSpan);
+            messageDiv.appendChild(textSpan);
+            messageDiv.appendChild(timeSpan);
+            
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // 添加系统消息
+        function addSystemMessage(text) {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'system-message';
+            messageDiv.textContent = text;
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // 更新在线用户列表
+        function updateOnlineUsers(users) {
+            const usersList = document.getElementById('onlineUsers');
+            usersList.innerHTML = '';
+            
+            users.forEach(user => {
+                if (user.username !== currentUser) {
+                    const userDiv = document.createElement('div');
+                    userDiv.className = 'user-item';
+                    if (selectedUser && selectedUser.id === user.id) {
+                        userDiv.className += ' selected';
+                    }
+                    userDiv.textContent = user.username;
+                    userDiv.onclick = () => selectUser(user);
+                    usersList.appendChild(userDiv);
+                }
+            });
+        }
+
+        // 选择私聊用户
+        function selectUser(user) {
+            const previousSelected = document.querySelector('.user-item.selected');
+            if (previousSelected) {
+                previousSelected.classList.remove('selected');
+            }
+            
+            if (selectedUser && selectedUser.id === user.id) {
+                selectedUser = null;
+                document.querySelector('.chat-header h2').textContent = '聊天室';
+            } else {
+                selectedUser = user;
+                document.querySelector('.chat-header h2').textContent = `与 ${user.username} 私聊`;
+                const userDiv = Array.from(document.querySelectorAll('.user-item'))
+                    .find(div => div.textContent === user.username);
+                if (userDiv) {
+                    userDiv.classList.add('selected');
+                }
+            }
+        }
+
+        // 处理输入状态
+        function handleTyping() {
+            socket.emit('typing');
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                socket.emit('stopTyping');
+            }, 1000);
+        }
+
+        // 监听消息输入
+        document.getElementById('messageInput').addEventListener('input', handleTyping);
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Socket.IO事件监听
+        socket.on('message', (message) => {
+            addMessage(message, message.user === currentUser ? 'sent' : 'received');
+        });
+
+        socket.on('privateMessage', (message) => {
+            addMessage(message, message.from === currentUser ? 'sent' : 'received');
+        });
+
+        socket.on('userJoined', (data) => {
+            addSystemMessage(`${data.user} 加入了聊天室`);
+        });
+
+        socket.on('userLeft', (data) => {
+            addSystemMessage(`${data.user} 离开了聊天室`);
+        });
+
+        socket.on('onlineUsers', (users) => {
+            updateOnlineUsers(users);
+        });
+
+        socket.on('userTyping', (username) => {
+            document.getElementById('typingIndicator').textContent = `${username} 正在输入...`;
+        });
+
+        socket.on('userStoppedTyping', () => {
+            document.getElementById('typingIndicator').textContent = '';
+        });
+    </script>
+</body>
+</html>

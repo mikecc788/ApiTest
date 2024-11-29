@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户认证</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+        }
+        .tab.active {
+            border-bottom: 2px solid #007bff;
+            color: #007bff;
+            margin-bottom: -2px;
+        }
+        .form {
+            display: none;
+        }
+        .form.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: #dc3545;
+            margin-top: 10px;
+            display: none;
+        }
+        .success {
+            color: #28a745;
+            margin-top: 10px;
+            display: none;
+        }
+        .user-info {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+            margin-top: 10px;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="auth-forms">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('login')">登录</button>
+                <button class="tab" onclick="switchTab('register')">注册</button>
+            </div>
+            
+            <!-- 登录表单 -->
+            <form id="login-form" class="form active" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-email">邮箱</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">密码</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit">登录</button>
+                <div id="login-error" class="error"></div>
+                <div id="login-success" class="success"></div>
+            </form>
+            
+            <!-- 注册表单 -->
+            <form id="register-form" class="form" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="register-username">用户名</label>
+                    <input type="text" id="register-username" required minlength="3">
+                </div>
+                <div class="form-group">
+                    <label for="register-email">邮箱</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">密码</label>
+                    <input type="password" id="register-password" required minlength="6">
+                </div>
+                <button type="submit">注册</button>
+                <div id="register-error" class="error"></div>
+                <div id="register-success" class="success"></div>
+            </form>
+        </div>
+
+        <!-- 用户信息区域 -->
+        <div id="user-info" class="user-info">
+            <h3>欢迎回来！</h3>
+            <p>用户名：<span id="info-username"></span></p>
+            <p>邮箱：<span id="info-email"></span></p>
+            <button class="logout-btn" onclick="handleLogout()">退出登录</button>
+        </div>
+    </div>
+
+    <script>
+        // 检查是否已登录
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user'));
+            
+            if (token && user) {
+                showUserInfo(user);
+            }
+        }
+
+        // 切换表单
+        function switchTab(formId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.form').forEach(form => form.classList.remove('active'));
+            
+            document.querySelector(`.tab[onclick="switchTab('${formId}')"]`).classList.add('active');
+            document.getElementById(`${formId}-form`).classList.add('active');
+        }
+
+        // 显示用户信息
+        function showUserInfo(user) {
+            document.getElementById('auth-forms').style.display = 'none';
+            document.getElementById('user-info').style.display = 'block';
+            document.getElementById('info-username').textContent = user.username;
+            document.getElementById('info-email').textContent = user.email;
+        }
+
+        // 处理登录
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 保存 token 和用户信息
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    document.getElementById('login-success').textContent = '登录成功！';
+                    document.getElementById('login-success').style.display = 'block';
+                    document.getElementById('login-error').style.display = 'none';
+                    
+                    // 显示用户信息
+                    showUserInfo(data.user);
+                } else {
+                    document.getElementById('login-error').textContent = data.message;
+                    document.getElementById('login-error').style.display = 'block';
+                    document.getElementById('login-success').style.display = 'none';
+                }
+            } catch (error) {
+                document.getElementById('login-error').textContent = '登录失败，请稍后重试';
+                document.getElementById('login-error').style.display = 'block';
+                document.getElementById('login-success').style.display = 'none';
+            }
+        }
+
+        // 处理注册
+        async function handleRegister(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 保存 token 和用户信息
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    document.getElementById('register-success').textContent = '注册成功！';
+                    document.getElementById('register-success').style.display = 'block';
+                    document.getElementById('register-error').style.display = 'none';
+                    
+                    // 显示用户信息
+                    showUserInfo(data.user);
+                } else {
+                    document.getElementById('register-error').textContent = data.message;
+                    document.getElementById('register-error').style.display = 'block';
+                    document.getElementById('register-success').style.display = 'none';
+                }
+            } catch (error) {
+                document.getElementById('register-error').textContent = '注册失败，请稍后重试';
+                document.getElementById('register-error').style.display = 'block';
+                document.getElementById('register-success').style.display = 'none';
+            }
+        }
+
+        // 处理退出登录
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.getElementById('auth-forms').style.display = 'block';
+            document.getElementById('user-info').style.display = 'none';
+            
+            // 清空表单
+            document.getElementById('login-form').reset();
+            document.getElementById('register-form').reset();
+            
+            // 隐藏所有消息
+            document.querySelectorAll('.error, .success').forEach(el => el.style.display = 'none');
+        }
+
+        // 页面加载时检查登录状态
+        window.addEventListener('load', checkAuth);
+    </script>
+</body>
+</html>

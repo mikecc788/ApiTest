@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>头像上传测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .preview {
+            width: 200px;
+            height: 200px;
+            border: 2px dashed #ccc;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .preview img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>头像上传测试</h1>
+    
+    <div>
+        <label for="userId">用户ID：</label>
+        <input type="text" id="userId" placeholder="输入用户ID">
+    </div>
+    
+    <div class="preview">
+        <img id="preview" src="" alt="预览" style="display: none;">
+        <span id="placeholder">预览区域</span>
+    </div>
+    
+    <div>
+        <input type="file" id="avatar" accept="image/*">
+        <button onclick="uploadAvatar()">上传</button>
+    </div>
+
+    <script>
+        function previewImage(input) {
+            const preview = document.getElementById('preview');
+            const placeholder = document.getElementById('placeholder');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        document.getElementById('avatar').addEventListener('change', function() {
+            previewImage(this);
+        });
+
+        async function uploadAvatar() {
+            const userId = document.getElementById('userId').value;
+            const fileInput = document.getElementById('avatar');
+            const preview = document.getElementById('preview');
+            const placeholder = document.getElementById('placeholder');
+            
+            if (!userId) {
+                alert('请输入用户ID');
+                return;
+            }
+            
+            if (!fileInput.files[0]) {
+                alert('请选择文件');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('avatar', fileInput.files[0]);
+
+            try {
+                const response = await fetch(`/api/users/${userId}/avatar`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('上传成功！');
+                    // 显示上传的头像
+                    preview.src = data.avatar;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                } else {
+                    alert('上传失败：' + data.message);
+                }
+            } catch (error) {
+                alert('上传出错：' + error.message);
+            }
+        }
+
+        // 页面加载时检查用户是否已有头像
+        async function checkExistingAvatar() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) return;
+
+            try {
+                const response = await fetch(`/api/users/${userId}/avatar`);
+                const data = await response.json();
+                
+                if (response.ok && data.avatar) {
+                    const preview = document.getElementById('preview');
+                    const placeholder = document.getElementById('placeholder');
+                    preview.src = data.avatar;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('获取头像失败:', error);
+            }
+        }
+
+        // 当用户ID输入框值改变时检查头像
+        document.getElementById('userId').addEventListener('change', checkExistingAvatar);
+    </script>
+</body>
+</html>
