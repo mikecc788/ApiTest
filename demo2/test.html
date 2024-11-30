@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>图片测试</title>
+    <style>
+        .image-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px;
+        }
+        .image-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .image-card img {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .image-name {
+            margin-top: 8px;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="image-container" id="imageContainer"></div>
+
+    <script>
+        async function loadImages() {
+            try {
+                const response = await fetch('http://110.41.41.11:8080/api/images');
+                const data = await response.json();
+                
+                const container = document.getElementById('imageContainer');
+                data.images.forEach(imagePath => {
+                    const card = document.createElement('div');
+                    card.className = 'image-card';
+                    
+                    const img = document.createElement('img');
+                    img.src = `http://110.41.41.11:8080/api/images/${imagePath}`;
+                    img.alt = imagePath;
+                    
+                    const name = document.createElement('div');
+                    name.className = 'image-name';
+                    name.textContent = imagePath;
+                    
+                    card.appendChild(img);
+                    card.appendChild(name);
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error('加载图片失败:', error);
+            }
+        }
+
+        // 页面加载完成后加载图片
+        window.onload = loadImages;
+    </script>
+</body>
+</html>

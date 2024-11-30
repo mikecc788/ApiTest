@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const port = 8080;
+const imageRoutes = require('./imageRoutes');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -25,7 +26,7 @@ app.get('/test', (req, res) => {
   res.json({
     message: "Hello from Huawei Cloud! - Updated Version",
     timestamp: new Date().toISOString(),
-    version: "1.2"
+    version: "1.3.0"
   });
 });
 
@@ -123,6 +124,9 @@ app.delete('/todos/:id', (req, res) => {
   todos.splice(index, 1);
   res.status(204).send();
 });
+
+// 使用图片路由
+app.use('/api/images', imageRoutes);
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
