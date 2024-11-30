@@ -21,6 +21,8 @@ echo "[Deploy] Syncing and restarting..."
 sshpass -p 'Qaz123456.' scp $SSH_OPTS -r \
     index.js \
     imageRoutes.js \
+    todoRoutes.js \
+    tweetRoutes.js \
     package.json \
     package-lock.json \
     ${SERVER_USER}@${SERVER_IP}:${SERVER_PATH}/ > /dev/null 2>&1
