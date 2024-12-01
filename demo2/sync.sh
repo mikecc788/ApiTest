@@ -25,9 +25,9 @@ sshpass -p 'Qaz123456.' scp $SSH_OPTS -r \
     tweetRoutes.js \
     package.json \
     package-lock.json \
-    ${SERVER_USER}@${SERVER_IP}:${SERVER_PATH}/ > /dev/null 2>&1
+    ${SERVER_USER}@${SERVER_IP}:${SERVER_PATH}/
 
-sshpass -p 'Qaz123456.' ssh $SSH_OPTS ${SERVER_USER}@${SERVER_IP} "cd ${SERVER_PATH} && set PATH=C:\\Program Files\\nodejs;%PATH% && \"C:\\Users\\Administrator\\AppData\\Roaming\\npm\\pm2.cmd\" restart node-app" > /dev/null 2>&1
+sshpass -p 'Qaz123456.' ssh $SSH_OPTS ${SERVER_USER}@${SERVER_IP} "cd ${SERVER_PATH} && set PATH=C:\\Program Files\\nodejs;%PATH% && \"C:\\Users\\Administrator\\AppData\\Roaming\\npm\\pm2.cmd\" restart node-app"
 
 sleep 2
 
