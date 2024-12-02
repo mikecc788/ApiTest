@@ -9,6 +9,7 @@ const port = 8080;
 const imageRoutes = require('./imageRoutes');
 const todoRoutes = require('./todoRoutes');
 const tweetRoutes = require('./tweetRoutes');
+const appVersionRoutes = require('./appVersion');
 
 // 中间件配置
 app.use(express.json());
@@ -44,6 +45,7 @@ app.get('/test', (req, res) => {
 app.use('/api/images', imageRoutes);  // 图片相关接口
 app.use('/api/todos', todoRoutes);   // 待办事项相关接口
 app.use('/api/tweets', tweetRoutes); // 推文相关接口
+app.use('/api/version', appVersionRoutes); // 应用版本控制接口
 
 // 启动服务器
 app.listen(port, '0.0.0.0', () => {

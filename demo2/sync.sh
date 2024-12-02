@@ -24,6 +24,7 @@ sshpass -p 'Qaz123456.' scp $SSH_OPTS -r \
     todoRoutes.js \
     tweetRoutes.js \
     package.json \
+    appVersion.js \
     package-lock.json \
     ${SERVER_USER}@${SERVER_IP}:${SERVER_PATH}/
 
