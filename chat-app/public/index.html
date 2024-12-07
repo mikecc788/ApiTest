@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <style>
+        body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+        #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+        #input:focus { outline: none; }
+        #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+        #messages { list-style-type: none; margin: 0; padding: 0; width: 80%; float: left; }
+        #messages > li { padding: 0.5rem 1rem; }
+        #messages > li:nth-child(odd) { background: #efefef; }
+        #users-list { width: 20%; float: right; padding: 1rem; background: #f8f8f8; height: calc(100vh - 3rem); }
+        #users-list h3 { margin-top: 0; }
+        #username-form { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 8px; }
+        .typing { font-style: italic; color: #666; padding: 0.5rem 1rem; }
+        .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+    <div id="username-container" class="overlay">
+        <div id="username-form">
+            <h3>Enter your username</h3>
+            <input type="text" id="username-input" placeholder="Your name">
+            <button onclick="setUsername()">Join Chat</button>
+        </div>
+    </div>
+    <div id="users-list">
+        <h3>Online Users</h3>
+        <ul id="users"></ul>
+    </div>
+    <ul id="messages"></ul>
+    <div id="typing" class="typing"></div>
+    <form id="form" action="">
+        <input id="input" autocomplete="off" /><button>Send</button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let username = '';
+        let typing = false;
+        let typingTimeout;
+
+        // DOM elements
+        const usernameContainer = document.getElementById('username-container');
+        const usernameInput = document.getElementById('username-input');
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+        const messages = document.getElementById('messages');
+        const usersList = document.getElementById('users');
+        const typingDiv = document.getElementById('typing');
+
+        // 设置用户名
+        function setUsername() {
+            username = usernameInput.value.trim();
+            if (username) {
+                usernameContainer.style.display = 'none';
+                socket.emit('set username', username);
+            }
+        }
+
+        // 发送消息
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (input.value) {
+                socket.emit('chat message', input.value);
+                input.value = '';
+                socket.emit('stop typing');
+                typing = false;
+            }
+        });
+
+        // 处理正在输入状态
+        input.addEventListener('input', () => {
+            if (!typing) {
+                typing = true;
+                socket.emit('typing');
+            }
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                typing = false;
+                socket.emit('stop typing');
+            }, 1000);
+        });
+
+        // Socket.io 事件监听
+        socket.on('chat message', (data) => {
+            const item = document.createElement('li');
+            item.textContent = `${data.username} (${data.time}): ${data.message}`;
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+
+        socket.on('user list', (users) => {
+            usersList.innerHTML = '';
+            users.forEach(user => {
+                const li = document.createElement('li');
+                li.textContent = user;
+                usersList.appendChild(li);
+            });
+        });
+
+        socket.on('user joined', (username) => {
+            const item = document.createElement('li');
+            item.textContent = `${username} joined the chat`;
+            item.style.color = '#666';
+            messages.appendChild(item);
+        });
+
+        socket.on('user left', (username) => {
+            const item = document.createElement('li');
+            item.textContent = `${username} left the chat`;
+            item.style.color = '#666';
+            messages.appendChild(item);
+        });
+
+        socket.on('user typing', (username) => {
+            typingDiv.textContent = `${username} is typing...`;
+        });
+
+        socket.on('user stop typing', () => {
+            typingDiv.textContent = '';
+        });
+    </script>
+</body>
+</html>
